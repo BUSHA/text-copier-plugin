@@ -1,4 +1,3 @@
-// background.js
 let isPluginActive = false
 
 function updateIcon() {
@@ -25,7 +24,7 @@ function updateIcon() {
 
 updateIcon()
 
-chrome.action.onClicked.addListener((tab) => {
+chrome.action.onClicked.addListener(async (tab) => {
   isPluginActive = !isPluginActive
   updateIcon()
 
@@ -37,50 +36,31 @@ chrome.action.onClicked.addListener((tab) => {
     tabUrl.startsWith("about:") ||
     tabUrl.startsWith("file://")
   ) {
-    console.warn(
-      "Cannot activate Text Copier on restricted browser pages (chrome://, about:, file://)."
-    )
     isPluginActive = !isPluginActive
     updateIcon()
     return
   }
 
   if (isPluginActive) {
-    chrome.scripting
-      .executeScript({
+    try {
+      await chrome.scripting.insertCSS({
         target: { tabId: tabId },
         files: ["styles.css"],
       })
-      .then(() => {
-        return chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          files: ["content.js"],
-        })
+      await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ["content.js"],
       })
-      .then(() => {
-        chrome.tabs
-          .sendMessage(tabId, { action: "activateCopier" })
-          .catch((error) => {
-            console.error("Error sending activate message:", error)
-          })
-      })
-      .catch((error) => {
-        console.warn(
-          "Could not inject scripts (maybe already injected or permission issue):",
-          error
-        )
-        chrome.tabs
-          .sendMessage(tabId, { action: "activateCopier" })
-          .catch((error) => {
-            console.error("Error sending activate message (fallback):", error)
-          })
-      })
+      await chrome.tabs.sendMessage(tabId, { action: "activateCopier" })
+    } catch (e) {
+      // нічого не робимо
+    }
   } else {
-    chrome.tabs
-      .sendMessage(tabId, { action: "deactivateCopier" })
-      .catch((error) => {
-        console.error("Error sending deactivate message:", error)
-      })
+    try {
+      await chrome.tabs.sendMessage(tabId, { action: "deactivateCopier" })
+    } catch (e) {
+      // нічого не робимо
+    }
   }
 })
 
