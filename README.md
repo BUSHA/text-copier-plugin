@@ -43,4 +43,4 @@ The extension requires the following permissions:
 Feel free to fork the repository, make improvements, and submit pull requests.
 
 ## License
-This project is open-source. (Consider adding a specific license, e.g., MIT, if desired).
+This project is open-source. MIT license.
