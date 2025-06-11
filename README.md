@@ -39,9 +39,6 @@ The extension requires the following permissions:
 * `styles.css`: Provides the CSS for the text highlighting and the toast notification.
 * `icons/`: (Expected directory) Contains the various sizes of icons used for the extension in active and inactive states.
 
-## Screenshots
-*(Consider adding screenshots here to visually demonstrate the highlighting and toast notification)*
-
 ## Contributing
 Feel free to fork the repository, make improvements, and submit pull requests.
 
