@@ -1,0 +1,27 @@
+/* styles.css */
+
+/* Стилі для тост-повідомлення */
+.chrome-text-copier-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-family: sans-serif;
+    z-index: 99999;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.chrome-text-copier-toast.show {
+    opacity: 1;
+}
+
+/* Стилі для підсвічування тексту */
+.chrome-text-copier-highlight {
+    background-color: rgba(255, 255, 0, 0.378) !important; /* !important може бути потрібним, щоб перебити стилі сторінки */
+    border-radius: 12px;
+}

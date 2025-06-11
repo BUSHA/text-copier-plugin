@@ -8,29 +8,6 @@ function showToast(message) {
         toast.id = toastId;
         toast.classList.add('chrome-text-copier-toast');
         document.body.appendChild(toast);
-
-        // Inject styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .chrome-text-copier-toast {
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background-color: rgba(0, 0, 0, 0.7);
-                color: white;
-                padding: 10px 20px;
-                border-radius: 5px;
-                font-family: sans-serif;
-                z-index: 99999;
-                opacity: 0;
-                transition: opacity 0.5s ease-in-out;
-            }
-            .chrome-text-copier-toast.show {
-                opacity: 1;
-            }
-        `;
-        document.head.appendChild(style);
     }
 
     toast.textContent = message;
@@ -42,20 +19,28 @@ function showToast(message) {
 }
 
 let originalBackgroundColor = '';
+let highlightedElement = null; // Для відстеження елемента, який зараз підсвічений
 
 function handleMouseOver(event) {
     const target = event.target;
-    // Check if the target is a text node or contains text
-    if (target.nodeType === Node.ELEMENT_NODE && target.textContent.trim().length > 0) {
-        originalBackgroundColor = target.style.backgroundColor;
-        target.style.backgroundColor = 'yellow'; // Highlight color
+    if (target.nodeType === Node.ELEMENT_NODE && target.textContent.trim().length > 0 && !target.closest('#chrome-text-copier-toast')) {
+        // Якщо вже є підсвічений елемент, і це не поточний, скидаємо його
+        if (highlightedElement && highlightedElement !== target) {
+            highlightedElement.classList.remove('chrome-text-copier-highlight'); // ВИДАЛЯЄМО КЛАС
+        }
+
+        target.classList.add('chrome-text-copier-highlight'); // ДОДАЄМО КЛАС
+        highlightedElement = target; // Запам'ятовуємо цей елемент як підсвічений
     }
 }
 
 function handleMouseOut(event) {
     const target = event.target;
-    if (target.nodeType === Node.ELEMENT_NODE && target.textContent.trim().length > 0) {
-        target.style.backgroundColor = originalBackgroundColor;
+    if (target.nodeType === Node.ELEMENT_NODE && target.textContent.trim().length > 0 && !target.closest('#chrome-text-copier-toast')) {
+        if (highlightedElement === target) { // Перевіряємо, чи це той самий елемент, що був підсвічений
+            target.classList.remove('chrome-text-copier-highlight'); // ВИДАЛЯЄМО КЛАС
+            highlightedElement = null; // Скидаємо посилання на підсвічений елемент
+        }
     }
 }
 
@@ -63,64 +48,67 @@ function handleClick(event) {
     const target = event.target;
     const textToCopy = target.textContent.trim();
 
-    // Перевіряємо, чи є цільовий елемент посиланням (або його батьківський елемент)
-    // Шукаємо найближчий батьківський елемент, який є посиланням
     const closestLink = target.closest('a');
-
     if (closestLink) {
-        // Якщо це посилання, зупиняємо дію за замовчуванням (перехід за посиланням)
         event.preventDefault();
-        event.stopPropagation(); // Додатково зупиняємо поширення події
-        console.log("Клік по посиланню, зупинено перехід.");
+        event.stopPropagation();
+        console.log("Клік по посиланню, зупинено перехід та поширення події.");
     }
 
     if (textToCopy.length > 0) {
         navigator.clipboard.writeText(textToCopy)
             .then(() => {
-                // Скорочуємо текст для тосту, якщо він занадто довгий
                 const displayCopiedText = textToCopy.length > 50 ?
                     textToCopy.substring(0, 50) + '...' :
                     textToCopy;
-                showToast(`Текст "${displayCopiedText}" скопійовано!`);
+                showToast(`Text "${displayCopiedText}" Copied!`);
             })
             .catch(err => {
-                console.error('Не вдалося скопіювати текст:', err);
-                showToast('Не вдалося скопіювати текст!');
+                console.error('Could not copy text:', err);
+                showToast('Could not copy text!');
             });
     }
-    // Remove highlighting after click (ensure it applies to the target)
-    // Make sure originalBackgroundColor is correctly stored for the target or re-evaluated
-    if (target.nodeType === Node.ELEMENT_NODE && target.textContent.trim().length > 0) {
-        target.style.backgroundColor = ''; // Або поверніть оригінальний колір, якщо ви його зберігаєте для кожного елемента
-                                           // Простіше скинути, якщо немає складної логіки для збереження індивідуальних кольорів
+    // Скидаємо підсвічування після кліку
+    if (highlightedElement === target) {
+        target.classList.remove('chrome-text-copier-highlight'); // ВИДАЛЯЄМО КЛАС
+        highlightedElement = null;
     }
 }
+
+
+// Функція для скидання підсвічування з будь-якого активного елемента
+function clearHighlight() {
+    if (highlightedElement) {
+        highlightedElement.classList.remove('chrome-text-copier-highlight'); // ВИДАЛЯЄМО КЛАС
+        highlightedElement = null; // Очищаємо посилання
+    }
+}
+
 
 // Function to attach/detach event listeners
 function toggleEventListeners(attach) {
     if (attach) {
         document.addEventListener('mouseover', handleMouseOver);
         document.addEventListener('mouseout', handleMouseOut);
-        document.addEventListener('click', handleClick);
+        // Використовуємо useCapture = true для handleClick, щоб перехопити подію на етапі захоплення
+        document.addEventListener('click', handleClick, true);
     } else {
         document.removeEventListener('mouseover', handleMouseOver);
         document.removeEventListener('mouseout', handleMouseOut);
-        document.removeEventListener('click', handleClick);
+        document.removeEventListener('click', handleClick, true);
+        clearHighlight(); // Викликаємо цю функцію при деактивації, щоб очистити підсвічування
     }
 }
 
 // Listen for messages from background script to activate/deactivate
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "activateCopier") {
-        console.log("Content script received activate signal.");
         toggleEventListeners(true);
         sendResponse({ status: "Copier activated" });
     } else if (request.action === "deactivateCopier") {
-        console.log("Content script received deactivate signal.");
         toggleEventListeners(false);
         sendResponse({ status: "Copier deactivated" });
     }
-    // Important: return true to indicate you will send a response asynchronously
     return true; // For async responses
 });
 
